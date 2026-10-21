@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mission to Phobos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&family=Unbounded:wght@500;700;800&display=swap">
+<style>
+/* Layout: one reading column floating over a fixed starfield; a sticky Earth→Mars
+   trajectory tracks the six lesson stages; Mars rises out of the right edge of the hero. */
+:root{
+  --void:#080A15;
+  --panel:rgba(19,21,41,.82);
+  --line:rgba(237,230,223,.13);
+  --fg:#EEE7E0;
+  --muted:#A9A3B6;
+  --mars:#B84A26;
+  --mars-hi:#E27A4E;
+  --dust:#F2A882;
+  --ok:#6FD6B0;
+  --no:#FFB65C;
+  --display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+body{
+  margin:0;
+  background:
+    radial-gradient(70% 50% at 85% 0%, rgba(184,74,38,.22), transparent 70%),
+    radial-gradient(60% 50% at 0% 100%, rgba(78,66,150,.22), transparent 70%),
+    var(--void);
+  background-attachment:fixed;
+  color:var(--fg);
+  font:400 17px/1.6 var(--body);
+  overflow-x:clip;
+}
+#stars{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+.wrap{
+  max-width:880px;margin-inline:auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--dust);outline-offset:2px}
+b{font-weight:600}
+
+/* ---------- trajectory nav ---------- */
+.track{
+  position:sticky;top:env(safe-area-inset-top, 0px);z-index:10;
+  background:rgba(8,10,21,.84);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.track .wrap{display:flex;align-items:center;gap:12px;padding-block:10px 8px}
+.orb{flex:none;width:16px;height:16px;border-radius:50%}
+.orb.earth{background:radial-gradient(circle at 35% 35%, #A8D8FF, #2E6FB5 60%, #12305A)}
+.orb.red{background:radial-gradient(circle at 35% 35%, var(--mars-hi), var(--mars) 55%, #4E1C10)}
+.stops{list-style:none;margin:0;padding:0;display:flex;justify-content:space-between;flex:1;min-width:0;position:relative}
+.stops::before{content:"";position:absolute;left:6px;right:6px;top:6px;border-top:1px dashed rgba(242,168,130,.5)}
+.stops a{display:flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;color:var(--muted);
+  font:500 .66rem/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:0 2px}
+.stops .dot{width:13px;height:13px;border-radius:50%;background:var(--void);border:1.5px solid rgba(242,168,130,.65);position:relative;z-index:1;transition:background .2s, box-shadow .2s}
+.stops a.passed .dot{background:rgba(242,168,130,.5)}
+.stops a.active{color:var(--fg)}
+.stops a.active .dot{background:var(--dust);box-shadow:0 0 0 4px rgba(242,168,130,.2)}
+.stage-now{display:none;flex:none;font:700 .66rem/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dust)}
+@media (max-width:600px){
+  .stops .lbl{display:none}
+  .stage-now{display:block}
+}
+
+/* ---------- hero ---------- */
+.hero{position:relative;overflow:clip}
+.hero .wrap{position:relative;z-index:1;padding-block:clamp(56px,10vw,120px) clamp(40px,7vw,88px)}
+.hero-copy{max-width:min(31rem, 60%)}
+.system{position:absolute;width:clamp(300px,56vw,640px);aspect-ratio:1;max-width:none;right:-14%;top:50%;transform:translateY(-50%);pointer-events:none}
+.mars{
+  position:absolute;inset:19%;border-radius:50%;z-index:1;
+  background:
+    radial-gradient(42% 12% at 50% 5%, rgba(255,244,236,.85), rgba(255,244,236,0) 70%),
+    radial-gradient(40% 8% at 52% 34%, rgba(110,36,16,.4), rgba(110,36,16,0) 70%),
+    radial-gradient(30% 13% at 58% 47%, rgba(70,22,10,.55), rgba(70,22,10,0) 70%),
+    radial-gradient(18% 10% at 34% 60%, rgba(90,30,14,.5), rgba(90,30,14,0) 70%),
+    radial-gradient(16% 22% at 72% 68%, rgba(80,26,12,.45), rgba(80,26,12,0) 70%),
+    radial-gradient(circle at 34% 30%, #F0956A 0%, #D0633A 28%, #A9431F 58%, #5E2211 86%, #2B0F08 100%);
+  box-shadow:inset -24px -30px 70px rgba(5,3,10,.75), inset 6px 6px 30px rgba(255,190,150,.12), 0 0 100px rgba(184,74,38,.3);
+}
+.system svg{position:absolute;inset:0;width:100%;height:100%;max-width:none}
+.system .front{z-index:2}
+.sys-label{font:700 2.1px var(--mono);letter-spacing:.3px;fill:rgba(238,231,224,.75)}
+.eyebrow{font:700 .72rem/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dust);margin:0}
+h1{font:800 clamp(2.6rem,8vw,5rem)/1.02 var(--display);letter-spacing:-.01em;margin:14px 0 18px;text-wrap:balance;text-shadow:0 2px 18px rgba(0,0,0,.45)}
+h1 span{color:var(--dust)}
+.lede{font-size:1.12rem;margin:0 0 28px;max-width:34rem;text-shadow:0 1px 10px rgba(0,0,0,.6)}
+.facts{display:flex;flex-wrap:wrap;gap:14px 32px;margin:0}
+.facts div{display:grid;gap:2px}
+.facts dt{font:700 .66rem/1.2 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:0;font-weight:600}
+@media (max-width:700px){
+  .hero-copy{max-width:none}
+  .system{width:330px;right:-150px;top:0;transform:none;opacity:.6}
+  .sys-label{display:none}
+}
+
+/* ---------- stages ---------- */
+main{padding-bottom:40px}
+.stage{display:grid;gap:18px;padding-block:56px 8px;scroll-margin-top:70px}
+.stage-head{display:grid;gap:8px}
+h2{font:700 clamp(1.6rem,4vw,2.3rem)/1.15 var(--display);margin:0;text-wrap:balance}
+.sub{margin:0;color:var(--muted);max-width:62ch}
+.panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:clamp(18px,3vw,28px);min-width:0;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+h3{font:600 1.15rem/1.3 var(--body);margin:0 0 4px;text-wrap:balance}
+h4{font:700 .72rem/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dust);margin:22px 0 4px}
+.hint{color:var(--muted);margin:0 0 16px;font-size:.95rem}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:18px}
+.score{font:500 .82rem var(--mono);color:var(--muted)}
+.score.win{color:var(--ok)}
+
+.btn{
+  border:1px solid var(--mars);background:var(--mars);color:#FFF4EC;
+  font-weight:600;font-size:.95rem;padding:.55em 1.25em;border-radius:999px;cursor:pointer;
+  transition:background .15s, border-color .15s;
+}
+.btn:hover{background:#C9572F;border-color:#C9572F}
+.btn.ghost{background:transparent;border-color:var(--line);color:var(--fg)}
+.btn.ghost:hover{border-color:var(--dust)}
+.btn[aria-pressed="true"]{background:rgba(111,214,176,.14);border-color:var(--ok);color:var(--ok)}
+
+select,input[type="text"],textarea{
+  background:rgba(255,255,255,.06);border:1px solid rgba(237,230,223,.22);border-radius:8px;
+  padding:.3em .55em;max-width:100%;
+}
+select{cursor:pointer}
+select option{background:#14162B;color:var(--fg)}
+textarea{width:100%;min-height:3.2em;resize:vertical;line-height:1.45}
+.is-ok{border-color:var(--ok)!important;box-shadow:0 0 0 1px var(--ok)}
+.is-no{border-color:var(--no)!important;box-shadow:0 0 0 1px var(--no)}
+.fix{font:500 .82rem var(--mono);color:var(--ok)}
+
+/* warm-up: matching */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.chip{
+  border:1px solid rgba(237,230,223,.25);background:rgba(255,255,255,.04);
+  padding:.4em .95em;border-radius:999px;cursor:pointer;font-weight:500;
+}
+.chip:hover{border-color:var(--dust)}
+.chip.sel,.def.sel{border-color:var(--dust);background:rgba(242,168,130,.16)}
+.chip.done{opacity:.32;cursor:default;border-style:dashed}
+.defs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.def{
+  width:100%;height:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);border-radius:10px;
+  padding:.7em .9em;line-height:1.45;font-size:.95rem;
+  display:flex;flex-direction:column;gap:6px;
+}
+.def:hover{border-color:rgba(242,168,130,.6)}
+.def.done{cursor:default;border-color:rgba(111,214,176,.6);background:rgba(111,214,176,.06)}
+.gloss{font-size:.9rem;color:var(--ok)}
+.gloss b{color:var(--fg)}
+.miss{animation:shake .4s;border-color:var(--no)!important}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+.talk{margin:0;padding-left:1.2em;display:grid;gap:6px}
+
+/* guesses */
+.guess{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.guess li{display:grid;gap:8px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{border:1px solid rgba(237,230,223,.25);background:transparent;border-radius:999px;padding:.3em .95em;cursor:pointer;font-variant-numeric:tabular-nums}
+.opt[aria-pressed="true"]{border-color:var(--dust);background:rgba(242,168,130,.16)}
+
+/* video */
+.screen{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#000;aspect-ratio:16/9;max-width:100%}
+.screen iframe{display:block;width:100%;height:100%;border:0}
+.credit a{color:var(--dust)}
+a.btn{display:inline-block;justify-self:center;text-decoration:none}
+.missing{position:absolute;inset:0;display:grid;place-content:center;gap:12px;text-align:center;padding:20px;background:rgba(8,10,21,.94)}
+.missing p{margin:0;max-width:40ch}
+.chapters{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.chap{
+  display:grid;gap:2px;text-align:left;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:12px 16px;
+}
+.chap:hover{border-color:var(--dust)}
+.chap .t{font:700 .72rem var(--mono);letter-spacing:.08em;color:var(--dust);font-variant-numeric:tabular-nums}
+.chap .n{font-weight:600}
+.chap .d{font-size:.88rem;color:var(--muted)}
+.under{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:-6px}
+.credit{margin:0;font:500 .75rem var(--mono);color:var(--muted)}
+.under .btn{font-size:.85rem;padding:.4em 1em}
+video::cue{font:500 1.05em/1.35 "Golos Text",system-ui,sans-serif;color:#F5EFE9;background:rgba(8,10,21,.78)}
+
+.nums{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.nums li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.nums select{font-variant-numeric:tabular-nums;min-width:5.5em}
+
+.tf{list-style:none;margin:0;padding:0}
+.tf li{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.tf .btns{display:flex;gap:6px}
+.tfb{border:1px solid rgba(237,230,223,.25);background:transparent;border-radius:999px;padding:.25em .85em;cursor:pointer;font-size:.9rem}
+.tfb:hover:not(:disabled){border-color:var(--dust)}
+.tfb:disabled{cursor:default}
+.tfb.right{border-color:var(--ok);color:var(--ok);background:rgba(111,214,176,.12)}
+.tfb.wrong{border-color:var(--no);color:var(--no);background:rgba(255,182,92,.1)}
+.tf .why{grid-column:1/-1;font-size:.92rem;color:var(--muted);margin:0}
+.tf .why.good::before{content:"✓ ";color:var(--ok)}
+.tf .why.bad::before{content:"✗ ";color:var(--no)}
+
+/* story */
+.story h3{font:700 1.35rem/1.25 var(--display);margin-bottom:14px}
+.story p{margin:0 0 14px;max-width:66ch}
+.story p:last-child{margin-bottom:0}
+.hard{
+  background:rgba(242,168,130,.14);border-bottom:1.5px dashed var(--dust);
+  padding:0 .18em;border-radius:3px;transition:background .2s
+}
+.hard.easy{background:rgba(111,214,176,.14);border-bottom-color:var(--ok)}
+.story-tools{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.swap{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px 22px}
+.swap li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.swap .hw{font-weight:600;color:var(--dust)}
+.swap .arrow{color:var(--muted)}
+
+/* grammar */
+.rule{display:grid;border-top:1px solid var(--line);margin-top:14px}
+.rule > div{display:grid;grid-template-columns:8.5rem 1fr;gap:4px 16px;padding:12px 0;border-bottom:1px solid var(--line)}
+.rule .k{font:700 .74rem/1.5 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dust)}
+.rule p{margin:0}
+.rule em{font-style:normal;color:var(--dust);font-weight:600}
+@media (max-width:560px){.rule > div{grid-template-columns:1fr}}
+.careful{border-color:rgba(255,182,92,.45);background:rgba(255,182,92,.07)}
+.careful h3{color:var(--no)}
+.careful p{margin:6px 0 0}
+
+.forms{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 22px}
+.forms li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.forms .base{min-width:5.2em;font-weight:500}
+.forms input{width:7.5em}
+.kind{font:700 .62rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+.gaps{margin:0;padding-left:1.3em;display:grid;gap:10px;line-height:2.1}
+.gaps input{width:8em}
+.gaps .base{color:var(--muted);font-size:.92rem;margin-left:4px}
+
+/* translation */
+.tr{list-style:none;margin:0;padding:0}
+.tr li{display:grid;gap:8px;padding:16px 0;border-top:1px solid var(--line)}
+.tr li:first-child{border-top:0;padding-top:4px}
+.tr .src{margin:0;font-weight:500}
+.tr .line{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tr .answer{margin:0;color:var(--ok)}
+.tr .answer::before{content:"Model answer: ";font:700 .68rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* talk */
+.qs{counter-reset:q;list-style:none;margin:0;padding:0}
+.qs li{counter-increment:q;display:grid;grid-template-columns:2.2rem 1fr;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.qs li:first-child{border-top:0;padding-top:0}
+.qs li::before{content:counter(q);font:700 1.1rem/1.5 var(--display);color:var(--dust)}
+.tag{display:inline-block;margin-left:6px;font:700 .6rem/1.6 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dust);border:1px solid rgba(242,168,130,.5);border-radius:999px;padding:0 .6em;vertical-align:2px;white-space:nowrap}
+.report{border-color:rgba(242,168,130,.4);background:linear-gradient(135deg, rgba(184,74,38,.2), rgba(19,21,41,.85) 60%)}
+.report p{margin:6px 0 0;max-width:62ch}
+.bank{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.bank span{font:500 .82rem var(--mono);border:1px solid var(--line);border-radius:6px;padding:.15em .55em}
+
+footer{border-top:1px solid var(--line);margin-top:48px}
+footer .wrap{display:flex;align-items:center;gap:14px;padding-block:24px 36px;color:var(--muted);font-size:.85rem}
+footer .orb{width:22px;height:22px}
+footer p{margin:0}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+
+<nav class="track" aria-label="Lesson stages">
+  <div class="wrap">
+    <span class="orb earth" title="Earth" aria-hidden="true"></span>
+    <ol class="stops">
+      <li><a href="#warmup" data-stage="warmup" data-name="Warm-up"><span class="dot"></span><span class="lbl">Warm-up</span></a></li>
+      <li><a href="#watch" data-stage="watch" data-name="Watch"><span class="dot"></span><span class="lbl">Watch</span></a></li>
+      <li><a href="#read" data-stage="read" data-name="Read"><span class="dot"></span><span class="lbl">Read</span></a></li>
+      <li><a href="#grammar" data-stage="grammar" data-name="Grammar"><span class="dot"></span><span class="lbl">Grammar</span></a></li>
+      <li><a href="#translate" data-stage="translate" data-name="Translate"><span class="dot"></span><span class="lbl">Translate</span></a></li>
+      <li><a href="#talk" data-stage="talk" data-name="Talk"><span class="dot"></span><span class="lbl">Talk</span></a></li>
+    </ol>
+    <span class="orb red" title="Mars" aria-hidden="true"></span>
+    <span class="stage-now" id="stage-now">Launch</span>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="system" aria-hidden="true">
+    <svg viewBox="0 0 100 100">
+      <ellipse cx="50" cy="50" rx="47" ry="13" transform="rotate(-14 50 50)" fill="none" stroke="rgba(242,168,130,.35)" stroke-width=".35" stroke-dasharray=".8 1.4"/>
+    </svg>
+    <div class="mars"></div>
+    <svg class="front" viewBox="0 0 100 100">
+      <defs>
+        <radialGradient id="ph" cx="35%" cy="35%" r="75%">
+          <stop offset="0" stop-color="#BBA899"/>
+          <stop offset=".6" stop-color="#7A6A5F"/>
+          <stop offset="1" stop-color="#352D29"/>
+        </radialGradient>
+      </defs>
+      <path d="M3 50 A47 13 0 0 0 97 50" transform="rotate(-14 50 50)" fill="none" stroke="rgba(242,168,130,.65)" stroke-width=".35" stroke-dasharray=".8 1.4"/>
+      <g transform="translate(12.1 66.2) rotate(-20) scale(1.25)">
+        <path d="M-2.6,-0.4 C-2.6,-1.9 -0.9,-2.3 0.6,-2.0 C2.2,-1.7 2.9,-0.6 2.6,0.7 C2.3,1.9 0.6,2.2 -0.8,1.9 C-2.1,1.6 -2.6,0.8 -2.6,-0.4 Z" fill="url(#ph)"/>
+        <circle cx="-1.2" cy="-0.3" r=".7" fill="rgba(0,0,0,.28)"/>
+        <circle cx="1.1" cy="0.6" r=".35" fill="rgba(0,0,0,.22)"/>
+      </g>
+      <text x="12.5" y="73.5" text-anchor="middle" class="sys-label">PHOBOS</text>
+    </svg>
+  </div>
+  <div class="wrap">
+    <div class="hero-copy">
+      <p class="eyebrow">English · B1 · Space lesson</p>
+      <h1>Mission to <span>Phobos</span></h1>
+      <p class="lede">In October 2026, a Japanese rocket sent a spacecraft towards a tiny moon of Mars. Today you will learn space words, watch a news report and practise the Past Simple.</p>
+      <dl class="facts">
+        <div><dt>Discovered</dt><dd>1877</dd></div>
+        <div><dt>Goes around Mars</dt><dd>3 times a day</dd></div>
+        <div><dt>Name in Greek</dt><dd>“fear”</dd></div>
+      </dl>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ 1. WARM-UP ============ -->
+  <section class="stage" id="warmup">
+    <div class="stage-head">
+      <p class="eyebrow">Stage 1 of 6 · Warm-up</p>
+      <h2>Space words</h2>
+      <p class="sub">Learn the key words before you watch the video.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Match the words and their meanings</h3>
+      <p class="hint">Click a word, then click its meaning. When you are right, you will see the Russian translation.</p>
+      <div class="chips" id="m-words"></div>
+      <ul class="defs" id="m-defs"></ul>
+      <div class="row"><span class="score" id="m-score">0 / 12 matched</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>Let’s talk</h3>
+      <ul class="talk">
+        <li>What colour is Mars? Why do people call it “the Red Planet”?</li>
+        <li>Can you name all the planets in our Solar System?</li>
+        <li>How many moons does Earth have? Do other planets have moons too?</li>
+      </ul>
+    </div>
+
+    <div class="panel">
+      <h3>Guess before you watch</h3>
+      <p class="hint">Choose your answers now. Check them after the video.</p>
+      <ol class="guess" id="guess"></ol>
+      <div class="row"><button class="btn ghost" type="button" id="guess-check">Check my guesses</button><span class="score" id="guess-score"></span></div>
+    </div>
+  </section>
+
+  <!-- ============ 2. WATCH ============ -->
+  <section class="stage" id="watch">
+    <div class="stage-head">
+      <p class="eyebrow">Stage 2 of 6 · Watch</p>
+      <h2>Watch the news</h2>
+      <p class="sub">Watch Part 1 first. Part 2 is an interview with a scientist. It is harder, so watch it if you have time.</p>
+    </div>
+
+    <div class="screen">
+      <iframe id="yt" title="DW News video about the MMX mission" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div class="missing" id="yt-local" hidden>
+        <p>YouTube videos don’t play when the lesson is opened as a file on a computer. Open the lesson from its github.io link, or watch the video on YouTube.</p>
+        <a class="btn" href="https://www.youtube.com/watch?v=CgfA7JpdeSQ" target="_blank" rel="noopener">Watch on YouTube</a>
+      </div>
+    </div>
+    <div class="under">
+      <p class="credit">Video: <a id="yt-link" href="https://www.youtube.com/" target="_blank" rel="noopener">DW News on YouTube</a></p>
+      <p class="credit">Subtitles: press <b>CC</b> in the player</p>
+    </div>
+
+    <div class="chapters">
+      <button class="chap" type="button" data-t="0"><span class="t">0:00 – 3:53</span><span class="n">Part 1 · The report</span><span class="d">What is MMX and how will it work?</span></button>
+      <button class="chap" type="button" data-t="233"><span class="t">3:53 – 8:30</span><span class="n">Part 2 · The interview</span><span class="d">A scientist from the European Space Agency. Harder.</span></button>
+    </div>
+
+    <div class="panel">
+      <h3>Listen for the numbers</h3>
+      <p class="hint">Part 1. Choose the right number for each sentence.</p>
+      <ol class="nums" id="nums"></ol>
+      <div class="row"><button class="btn" type="button" id="nums-check">Check</button><span class="score" id="nums-score"></span></div>
+    </div>
+
+    <div class="panel">
+      <h3>True or false?</h3>
+      <p class="hint">Click <b>True</b> or <b>False</b>. You will see the answer at once.</p>
+      <h4>Part 1 · The report</h4>
+      <ul class="tf" id="tf1"></ul>
+      <h4>Part 2 · The interview</h4>
+      <ul class="tf" id="tf2"></ul>
+      <div class="row"><span class="score" id="tf-score">0 / 10</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 3. READ ============ -->
+  <section class="stage" id="read">
+    <div class="stage-head">
+      <p class="eyebrow">Stage 3 of 6 · Read</p>
+      <h2>The story in simple English</h2>
+      <p class="sub">Read the story about the mission. The highlighted words are difficult. Then find a simple word for each one.</p>
+    </div>
+
+    <article class="panel story">
+      <h3>A tiny moon, a big mission</h3>
+      <p>In October 2026, a big rocket took off from a small island in the south of Japan. It carried a spacecraft called MMX. Japan built the spacecraft, and France and Germany built a small rover for it. It is a <span class="hard" data-easy="new and important">groundbreaking</span> mission: no spacecraft has ever landed on a moon of Mars, so MMX wants to be the first.</p>
+      <p>Mars has two small moons, Phobos and Deimos. An American astronomer, Asaph Hall, discovered them in 1877. Their names come from Greek and mean “fear” and “terror”. These moons are not like our Moon. They are tiny and <span class="hard" data-easy="not round">irregularly shaped</span>: they look more like potatoes than balls. Phobos is only 27 kilometres wide, so its gravity is very weak.</p>
+      <p>The <span class="hard" data-easy="trip">journey</span> to Mars and back is very long. MMX will reach Mars in 2027. Then it will fly around Phobos for about three years and <span class="hard" data-easy="collect">gather</span> information about it.</p>
+      <p>First, MMX will drop a little rover called Idefix. The engineers named it after the <span class="hard" data-easy="stubborn">tenacious</span> little dog from the Asterix comics. Idefix is about as big as a microwave. On Earth it weighs 25 kilograms, but on Phobos it will weigh only about 15 grams! When it hits the ground, it will <span class="hard" data-easy="jump">bounce</span> a few times. Then it will drive <span class="hard" data-easy="by itself">autonomously</span>, because a signal from Earth needs up to 40 minutes to get there and back. Idefix will <span class="hard" data-easy="study">examine</span> the ground and help scientists find a good place for the landing.</p>
+      <p>After that, the main spacecraft will land on Phobos for only two and a half hours and take a sample of soil. Then it will start its long way home. In 2031, a small capsule with the sample will <span class="hard" data-easy="fly very fast">hurtle</span> towards Earth and land in the Australian desert.</p>
+      <p>Why is this so important? Scientists still don’t know where Phobos came from. Maybe it was an asteroid, and Mars caught it a long time ago. Or maybe a giant space rock hit Mars and <span class="hard" data-easy="threw out">ejected</span> material into space, and this material became Phobos. The sample will help us find the answer. And there is a bonus: Phobos dust probably has a little bit of Mars in it too. Landing on such a tiny moon so far away is a real <span class="hard" data-easy="achievement">feat</span>. For space fans, the whole mission is <span class="hard" data-easy="amazing">mind-blowing</span>.</p>
+      <div class="story-tools"><button class="btn ghost" type="button" id="easy-toggle" aria-pressed="false">Show simple words in the text</button></div>
+    </article>
+
+    <div class="panel">
+      <h3>Make it simple</h3>
+      <p class="hint">Choose a simple word or phrase with the same meaning.</p>
+      <ul class="swap" id="swap"></ul>
+      <div class="row"><button class="btn" type="button" id="swap-check">Check</button><span class="score" id="swap-score"></span></div>
+    </div>
+  </section>
+
+  <!-- ============ 4. GRAMMAR ============ -->
+  <section class="stage" id="grammar">
+    <div class="stage-head">
+      <p class="eyebrow">Stage 4 of 6 · Grammar</p>
+      <h2>Past Simple: it happened!</h2>
+      <p class="sub">We use the Past Simple for finished actions in the past: <i>yesterday, in 1961, last year, in October 2026</i>.</p>
+    </div>
+
+    <div class="panel">
+      <h3>The rule</h3>
+      <div class="rule">
+        <div><span class="k">+ regular</span><p>verb + <em>-ed</em>: land → land<em>ed</em>, carry → carr<em>ied</em>, stop → stop<em>ped</em><br>The spacecraft land<em>ed</em> on the Moon.</p></div>
+        <div><span class="k">+ irregular</span><p>learn them by heart: fly → <em>flew</em>, build → <em>built</em>, take → <em>took</em><br>Gagarin <em>flew</em> into space in 1961.</p></div>
+        <div><span class="k">− negative</span><p><em>didn’t</em> + verb: The rover <em>didn’t need</em> a driver. <span class="kind">not “didn’t needed”</span></p></div>
+        <div><span class="k">? question</span><p><em>Did</em> + subject + verb: <em>Did</em> the rocket <em>take off</em>? — Yes, it <em>did</em>. / No, it <em>didn’t</em>.</p></div>
+        <div><span class="k">can → could</span><p>In the past, people <em>couldn’t</em> bring soil from Mars.</p></div>
+      </div>
+    </div>
+
+    <div class="panel careful">
+      <h3>Careful!</h3>
+      <p><span lang="ru">«Люди никогда не были на Марсе»</span> = <b>People have never been to Mars.</b> This is Present Perfect: we don’t say <i>when</i>.</p>
+      <p>In the Past Simple, we say or know <i>when</i>: <b>Nobody went to Mars in the 20th century.</b></p>
+    </div>
+
+    <div class="panel">
+      <h3>Find them in the story</h3>
+      <p class="hint">All these verbs are in the story in the Past Simple. Write the past form. Is it regular or irregular?</p>
+      <ul class="forms" id="forms"></ul>
+      <div class="row"><button class="btn" type="button" id="forms-check">Check</button><span class="score" id="forms-score"></span></div>
+    </div>
+
+    <div class="panel">
+      <h3>Space history</h3>
+      <p class="hint">Put the verbs in the Past Simple.</p>
+      <ol class="gaps" id="gaps"></ol>
+      <div class="row"><button class="btn" type="button" id="gaps-check">Check</button><span class="score" id="gaps-score"></span></div>
+    </div>
+  </section>
+
+  <!-- ============ 5. TRANSLATE ============ -->
+  <section class="stage" id="translate">
+    <div class="stage-head">
+      <p class="eyebrow">Stage 5 of 6 · Translate</p>
+      <h2>Translate</h2>
+      <p class="sub">Write your translation, then compare it with the model answer. Other correct variants are OK too.</p>
+    </div>
+    <div class="panel">
+      <h3>Russian → English</h3>
+      <ul class="tr" id="ru-en"></ul>
+    </div>
+    <div class="panel">
+      <h3>English → Russian</h3>
+      <ul class="tr" id="en-ru"></ul>
+    </div>
+  </section>
+
+  <!-- ============ 6. TALK ============ -->
+  <section class="stage" id="talk">
+    <div class="stage-head">
+      <p class="eyebrow">Stage 6 of 6 · Talk</p>
+      <h2>Let’s discuss</h2>
+      <p class="sub">Answer in full sentences. Questions with the tag need the Past Simple.</p>
+    </div>
+    <div class="panel">
+      <ol class="qs">
+        <li><span>What was the most interesting fact in the video for you? <span class="tag">Past Simple</span></span></li>
+        <li><span>Did you know that Mars has two moons? What did you know about Mars before this lesson? <span class="tag">Past Simple</span></span></li>
+        <li><span>Why do you think scientists want a piece of Phobos?</span></li>
+        <li><span>Idefix will work alone, very far from people. Would you like to drive a rover on another planet? Why or why not?</span></li>
+        <li><span>When did you last look at the night sky? What did you see? <span class="tag">Past Simple</span></span></li>
+        <li><span>Is it a good idea to spend a lot of money on space missions? Why or why not?</span></li>
+        <li><span>The capsule will come back in 2031. How old will you be then? What will be different in your life?</span></li>
+        <li><span>You can give a name to the next rover. What name will you choose, and why?</span></li>
+      </ol>
+    </div>
+    <div class="panel report">
+      <h3>Mission report</h3>
+      <p>Tell your teacher three things that happened in the story. Use the Past Simple. For example: <i>In October 2026, a rocket took off from Japan.</i></p>
+      <div class="bank"><span>took off</span><span>carried</span><span>built</span><span>discovered</span><span>named</span><span>chose</span><span>sent</span><span>didn’t know</span></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="orb red" aria-hidden="true"></span>
+    <p>Video: DW News. The story in Stage 3 is written for B1 learners, based on the facts from the report.</p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') n.className = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    for (const k of kids) n.append(k);
+    return n;
+  };
+  const shuffle = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+  const norm = s => s.toLowerCase().replace(/[’`]/g, "'").replace(/[.,!?;:"«»]/g, '').replace(/\s+/g, ' ').trim();
+  const mark = (node, ok) => { node.classList.toggle('is-ok', ok); node.classList.toggle('is-no', !ok); };
+  const setScore = (node, n, total) => { node.textContent = `${n} / ${total} correct`; node.classList.toggle('win', n === total); };
+
+  /* ---------- starfield ---------- */
+  const cv = $('#stars'), cx = cv.getContext('2d');
+  function drawStars() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = window.innerWidth, h = window.innerHeight;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, w, h);
+    let seed = 20261020;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const n = Math.round(w * h / 2400);
+    for (let i = 0; i < n; i++) {
+      const x = rnd() * w, y = rnd() * h, big = rnd() > .94;
+      const r = big ? .9 + rnd() * .9 : .25 + rnd() * .7, a = .25 + rnd() * .65;
+      cx.fillStyle = rnd() < .14 ? `rgba(255,205,175,${a})` : `rgba(222,228,255,${a})`;
+      cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
+    }
+  }
+  drawStars();
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawStars, 150); });
+
+  /* ---------- trajectory nav ---------- */
+  const links = $$('.stops a'), order = links.map(a => a.dataset.stage), now = $('#stage-now');
+  function setActive(id) {
+    const idx = order.indexOf(id);
+    links.forEach((a, i) => {
+      a.classList.toggle('active', i === idx);
+      a.classList.toggle('passed', i < idx);
+      if (i === idx) a.setAttribute('aria-current', 'step'); else a.removeAttribute('aria-current');
+    });
+    now.textContent = `${idx + 1}/6 · ${links[idx].dataset.name}`;
+  }
+  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && setActive(e.target.id)), { rootMargin: '-35% 0px -60% 0px' });
+  order.forEach(id => io.observe(document.getElementById(id)));
+
+  /* ---------- 1. matching ---------- */
+  const WORDS = [
+    ['planet', 'планета', 'A big round object in space that moves around the Sun. Earth and Mars are examples.'],
+    ['moon', 'спутник (луна)', 'A natural object that goes around a planet, like the one we see in the night sky.'],
+    ['spacecraft', 'космический корабль, аппарат', 'A machine that can travel in space.'],
+    ['probe', 'космический зонд', 'A spacecraft with no people on it. It collects information and sends it to Earth.'],
+    ['rocket', 'ракета', 'A long vehicle with very strong engines. It carries spacecraft up into space.'],
+    ['to launch', 'запускать', 'To send a rocket or a spacecraft up into the sky.'],
+    ['space mission', 'космическая миссия', 'A planned trip into space with a special job to do.'],
+    ['to orbit', 'вращаться по орбите', 'To go round and round a planet, a moon or the Sun.'],
+    ['surface', 'поверхность', 'The outside or top part of something, for example the ground of a planet.'],
+    ['gravity', 'гравитация, притяжение', 'The force that pulls things down to the ground.'],
+    ['rover', 'ровер (луноход, марсоход)', 'A small robot car that drives on another planet or moon.'],
+    ['sample', 'образец, проба', 'A small piece of something that scientists take and study.'],
+  ];
+  const mScore = $('#m-score');
+  let selW = null, selD = null, matched = 0;
+  shuffle(WORDS).forEach(([w]) => $('#m-words').append(el('button', { class: 'chip', type: 'button', 'data-w': w, onclick: e => pick('w', e.currentTarget) }, w)));
+  shuffle(WORDS).forEach(([w, ru, d]) => $('#m-defs').append(el('li', {}, el('button', { class: 'def', type: 'button', 'data-w': w, 'data-ru': ru, onclick: e => pick('d', e.currentTarget) }, d))));
+  function pick(kind, btn) {
+    if (btn.classList.contains('done')) return;
+    if (kind === 'w') { selW?.classList.remove('sel'); selW = selW === btn ? null : btn; selW?.classList.add('sel'); }
+    else { selD?.classList.remove('sel'); selD = selD === btn ? null : btn; selD?.classList.add('sel'); }
+    if (!(selW && selD)) return;
+    if (selW.dataset.w === selD.dataset.w) {
+      selW.classList.add('done'); selW.disabled = true;
+      selD.classList.add('done'); selD.disabled = true;
+      const gloss = el('span', { class: 'gloss', lang: 'ru' }, el('b', { lang: 'en' }, selD.dataset.w), ` — ${selD.dataset.ru}`);
+      selD.append(gloss);
+      matched++;
+      mScore.textContent = matched === WORDS.length ? 'All 12 matched. Ready for launch!' : `${matched} / ${WORDS.length} matched`;
+      mScore.classList.toggle('win', matched === WORDS.length);
+    } else {
+      [selW, selD].forEach(b => { b.classList.add('miss'); setTimeout(() => b.classList.remove('miss'), 450); });
+    }
+    selW.classList.remove('sel'); selD.classList.remove('sel'); selW = selD = null;
+  }
+
+  /* ---------- 1. guesses ---------- */
+  const GUESS = [
+    ['How many moons does Mars have?', ['1', '2', '4'], '2'],
+    ['How wide is Phobos?', ['27 km', '270 km', '2,700 km'], '27 km'],
+    ['When will the sample come back to Earth?', ['2027', '2031', '2040'], '2031'],
+  ];
+  GUESS.forEach(([q, opts], i) => {
+    const box = el('div', { class: 'opts', role: 'group', 'aria-label': q });
+    opts.forEach(o => box.append(el('button', { class: 'opt', type: 'button', 'aria-pressed': 'false', 'data-v': o, onclick: e => {
+      $$('.opt', box).forEach(b => { b.setAttribute('aria-pressed', 'false'); b.classList.remove('is-ok', 'is-no'); });
+      e.currentTarget.setAttribute('aria-pressed', 'true');
+    } }, o)));
+    $('#guess').append(el('li', { 'data-i': i }, el('span', {}, q), box));
+  });
+  $('#guess-check').addEventListener('click', () => {
+    let n = 0;
+    $$('#guess li').forEach(li => {
+      const right = GUESS[li.dataset.i][2];
+      $$('.opt', li).forEach(b => {
+        b.classList.remove('is-ok', 'is-no');
+        const chosen = b.getAttribute('aria-pressed') === 'true';
+        if (b.dataset.v === right) { b.classList.add('is-ok'); if (chosen) n++; }
+        else if (chosen) b.classList.add('is-no');
+      });
+    });
+    setScore($('#guess-score'), n, GUESS.length);
+  });
+
+  /* ---------- 2. video: DW's own YouTube player, captions on by default ---------- */
+  const VIDEO_ID = 'CgfA7JpdeSQ'; // "Japan launches mission to collect samples from Phobos | DW News"
+  // YouTube needs to know which site embeds the player; a page opened from disk has no
+  // address to report, so YouTube answers with error 153. There we link out instead.
+  const yt = $('#yt'), web = /^https?:$/.test(location.protocol);
+  const watchUrl = t => `https://www.youtube.com/watch?v=${VIDEO_ID}${t ? `&t=${t}s` : ''}`;
+  const embedUrl = (t, play) => {
+    const p = new URLSearchParams({ rel: '0', cc_load_policy: '1', cc_lang_pref: 'en', hl: 'en', playsinline: '1', start: String(t), origin: location.origin, widget_referrer: location.href });
+    if (play) p.set('autoplay', '1');
+    return `https://www.youtube.com/embed/${VIDEO_ID}?${p}`;
+  };
+  $('#yt-link').href = watchUrl(0);
+  if (web) yt.src = embedUrl(0, false);
+  else $('#yt-local').hidden = false;
+  $$('.chap').forEach(b => b.addEventListener('click', () => {
+    const t = Number(b.dataset.t);
+    if (!web) { window.open(watchUrl(t), '_blank', 'noopener'); return; }
+    yt.src = embedUrl(t, true);
+    yt.scrollIntoView({ block: 'center' });
+  }));
+
+  /* ---------- 2. numbers ---------- */
+  const NUMS = [
+    ['The journey to Mars and back will take around', '6', 'years.'],
+    ['Phobos is only', '27', 'kilometres wide.'],
+    ['After it arrives, MMX will fly around Phobos for', '3', 'years.'],
+    ['On Earth, the rover weighs', '25', 'kilograms…'],
+    ['…but on Phobos it will weigh only about', '15', 'grams.'],
+    ['The rover will work on Phobos for about', '100', 'days.'],
+    ['The main spacecraft will stay on Phobos for only', '2.5', 'hours.'],
+    ['The capsule with the sample will land in Australia in', '2031', ''],
+  ];
+  const NUM_OPTS = ['2.5', '3', '6', '15', '25', '27', '100', '2031'];
+  NUMS.forEach(([a, n, b], i) => {
+    const sel = el('select', { id: `num-${i}`, 'aria-label': 'Number', 'data-a': n }, el('option', { value: '' }, '—'));
+    NUM_OPTS.forEach(o => sel.append(el('option', { value: o }, o)));
+    $('#nums').append(el('li', {}, el('span', {}, a), sel, el('span', {}, b)));
+  });
+  $('#nums-check').addEventListener('click', () => {
+    let n = 0;
+    $$('#nums select').forEach(s => { const ok = s.value === s.dataset.a; mark(s, ok); if (ok) n++; });
+    setScore($('#nums-score'), n, NUMS.length);
+  });
+
+  /* ---------- 2. true / false ---------- */
+  const TF = [
+    [1, 'MMX is a project of Japanese and European space agencies.', true, 'Japan leads the mission, and Europe helps.'],
+    [1, 'Mars has three moons.', false, 'Mars has two moons: Phobos and Deimos.'],
+    [1, 'Phobos is round, like our Moon.', false, 'It is irregularly shaped, a bit like a potato.'],
+    [1, 'Engineers in France and Germany built the rover.', true, 'The rover Idefix comes from France and Germany.'],
+    [1, 'The rover gets its energy from the Sun.', true, 'It uses solar energy.'],
+    [1, 'The capsule with the sample will land in Japan.', false, 'It will land in Australia in 2031.'],
+    [2, 'A signal from Earth can take up to 40 minutes to get to Mars and back.', true, 'That is why the spacecraft must work by itself.'],
+    [2, 'People on Earth will control the landing with a joystick.', false, 'Everything happens autonomously: the spacecraft does it by itself.'],
+    [2, 'Scientists have two different ideas about how Phobos appeared.', true, 'Maybe it was an asteroid, or maybe it came from Mars after a big impact.'],
+    [2, 'The Phobos sample may have a little bit of Mars in it.', true, 'Material from Mars falls on Phobos, so it is a small Mars sample too.'],
+  ];
+  let tfDone = 0, tfRight = 0;
+  TF.forEach(([part, s, ans, why]) => {
+    const whyP = el('p', { class: 'why', hidden: '' }, why);
+    const btns = el('div', { class: 'btns' });
+    [['True', true], ['False', false]].forEach(([label, v]) => btns.append(el('button', { class: 'tfb', type: 'button', onclick: e => {
+      const ok = v === ans;
+      $$('.tfb', btns).forEach(b => { b.disabled = true; });
+      e.currentTarget.classList.add(ok ? 'right' : 'wrong');
+      whyP.hidden = false; whyP.classList.add(ok ? 'good' : 'bad');
+      tfDone++; if (ok) tfRight++;
+      const sc = $('#tf-score');
+      sc.textContent = tfDone === TF.length ? `${tfRight} / ${TF.length} correct` : `${tfDone} / ${TF.length} answered · ${tfRight} correct`;
+      sc.classList.toggle('win', tfRight === TF.length);
+    } }, label)));
+    $(part === 1 ? '#tf1' : '#tf2').append(el('li', {}, el('span', {}, s), btns, whyP));
+  });
+
+  /* ---------- 3. word swap ---------- */
+  const hards = $$('.story .hard');
+  hards.forEach(h => { h.dataset.hard = h.textContent; });
+  const EASY = hards.map(h => h.dataset.easy).sort((a, b) => a.localeCompare(b));
+  hards.forEach((h, i) => {
+    const sel = el('select', { id: `sw-${i}`, 'aria-label': `Simple word for ${h.dataset.hard}`, 'data-a': h.dataset.easy }, el('option', { value: '' }, 'choose…'));
+    EASY.forEach(o => sel.append(el('option', { value: o }, o)));
+    $('#swap').append(el('li', {}, el('span', { class: 'hw' }, h.dataset.hard), el('span', { class: 'arrow', 'aria-hidden': 'true' }, '→'), sel));
+  });
+  $('#swap-check').addEventListener('click', () => {
+    let n = 0;
+    $$('#swap select').forEach(s => { const ok = s.value === s.dataset.a; mark(s, ok); if (ok) n++; });
+    setScore($('#swap-score'), n, hards.length);
+  });
+  $('#easy-toggle').addEventListener('click', e => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+    e.currentTarget.textContent = on ? 'Show the difficult words again' : 'Show simple words in the text';
+    hards.forEach(h => { h.textContent = on ? h.dataset.easy : h.dataset.hard; h.classList.toggle('easy', on); });
+  });
+
+  /* ---------- 4. past forms ---------- */
+  const FORMS = [
+    ['take off', ['took off'], false], ['carry', ['carried'], true], ['build', ['built'], false],
+    ['discover', ['discovered'], true], ['name', ['named'], true], ['be', ['was', 'were'], false],
+    ['come', ['came'], false], ['catch', ['caught'], false], ['hit', ['hit'], false], ['become', ['became'], false],
+  ];
+  FORMS.forEach(([base, ans, reg], i) => {
+    const inp = el('input', { type: 'text', id: `form-${i}`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': `Past Simple of ${base}` });
+    $('#forms').append(el('li', {}, el('span', { class: 'base' }, base), el('span', { class: 'arrow', 'aria-hidden': 'true' }, '→'), inp, el('span', { class: 'kind', hidden: '' }, reg ? 'regular' : 'irregular')));
+  });
+  $('#forms-check').addEventListener('click', () => {
+    let n = 0;
+    $$('#forms li').forEach((li, i) => {
+      const inp = $('input', li), ok = FORMS[i][1].includes(norm(inp.value));
+      mark(inp, ok); if (ok) n++;
+      $('.kind', li).hidden = false;
+    });
+    setScore($('#forms-score'), n, FORMS.length);
+  });
+
+  /* ---------- 4. gap fill ---------- */
+  const GAPS = [
+    ['Yuri Gagarin ', { a: ['flew'], h: 'fly' }, ' into space in 1961.'],
+    ['In 1969, Neil Armstrong ', { a: ['walked'], h: 'walk' }, ' on the Moon.'],
+    ['In 1970, the Soviet rover Lunokhod 1 ', { a: ['drove'], h: 'drive' }, ' on the Moon for about ten months.'],
+    ['In 1877, Asaph Hall ', { a: ['saw'], h: 'see' }, ' the two moons of Mars for the first time.'],
+    ['In 2011, Russia ', { a: ['sent'], h: 'send' }, ' the probe Phobos-Grunt to Phobos, but it ', { a: ["didn't leave", 'did not leave'], h: 'not / leave' }, ' Earth’s orbit.'],
+    ['In 2020, the Japanese probe Hayabusa2 ', { a: ['brought'], h: 'bring' }, ' a sample from an asteroid to Earth.'],
+    [{ a: ['did'] }, ' you ', { a: ['watch'], h: 'watch' }, ' the MMX launch?'],
+    ['In the past, people ', { a: ["couldn't", 'could not'], h: 'can / not' }, ' bring soil from Mars.'],
+  ];
+  const gapInputs = [];
+  GAPS.forEach((parts, i) => {
+    const li = el('li', {});
+    parts.forEach((p, j) => {
+      if (typeof p === 'string') { li.append(p); return; }
+      const inp = el('input', { type: 'text', id: `gap-${i}-${j}`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': p.h ? `Past Simple of ${p.h}` : 'Missing word' });
+      inp._a = p.a; gapInputs.push(inp); li.append(inp);
+      if (p.h) li.append(el('span', { class: 'base' }, `(${p.h})`));
+    });
+    $('#gaps').append(li);
+  });
+  $('#gaps-check').addEventListener('click', () => {
+    let n = 0;
+    gapInputs.forEach(inp => { const ok = inp._a.includes(norm(inp.value)); mark(inp, ok); if (ok) n++; });
+    setScore($('#gaps-score'), n, gapInputs.length);
+  });
+
+  /* ---------- 5. translation ---------- */
+  const RU_EN = [
+    ['В прошлом люди не могли привезти образец грунта с Марса.', 'In the past, people couldn’t bring a soil sample from Mars.'],
+    ['Ракета стартовала с маленького острова на юге Японии.', 'The rocket took off from a small island in the south of Japan.'],
+    ['Инженеры из Франции и Германии построили ровер.', 'Engineers from France and Germany built the rover.'],
+    ['Учёные выбрали Фобос, а не Деймос.', 'Scientists chose Phobos, not Deimos.'],
+    ['Мы не знали, откуда появился Фобос.', 'We didn’t know where Phobos came from.'],
+    ['— Ты смотрела запуск? — Да, смотрела!', '— Did you watch the launch? — Yes, I did!'],
+    ['В XX веке никто не летал на Марс.', 'Nobody flew to Mars in the 20th century.'],
+  ];
+  const EN_RU = [
+    ['Asaph Hall discovered the moons of Mars in 1877.', 'Асаф Холл открыл спутники Марса в 1877 году.'],
+    ['The engineers named the rover after a little dog from a comic.', 'Инженеры назвали ровер в честь маленькой собачки из комикса.'],
+    ['The rover didn’t need a driver.', 'Роверу не нужен был водитель.'],
+    ['In 2020, Hayabusa2 brought a sample from an asteroid, and the capsule landed in Australia.', 'В 2020 году «Хаябуса-2» привезла образец с астероида, и капсула приземлилась в Австралии.'],
+    ['— Did people know much about Phobos before this mission? — No, they didn’t.', '— Люди много знали о Фобосе до этой миссии? — Нет.'],
+  ];
+  function buildTr(list, box, srcLang, dstLang) {
+    list.forEach(([src, ans], i) => {
+      const id = `${box}-${i}`;
+      const answer = el('p', { class: 'answer', lang: dstLang, hidden: '' }, ans);
+      const btn = el('button', { class: 'btn ghost', type: 'button', onclick: e => {
+        answer.hidden = !answer.hidden;
+        e.currentTarget.textContent = answer.hidden ? 'Show answer' : 'Hide answer';
+      } }, 'Show answer');
+      $(`#${box}`).append(el('li', {},
+        el('label', { class: 'src', for: id, lang: srcLang }, src),
+        el('textarea', { id, rows: '2', lang: dstLang, placeholder: dstLang === 'en' ? 'Your translation…' : 'Твой перевод…' }),
+        el('div', { class: 'line' }, btn),
+        answer));
+    });
+  }
+  buildTr(RU_EN, 'ru-en', 'ru', 'en');
+  buildTr(EN_RU, 'en-ru', 'en', 'ru');
+})();
+</script>
+</body>
+</html>
